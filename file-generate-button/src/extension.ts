@@ -5,12 +5,10 @@ import * as vscode from 'vscode';
 let fileCounter = 0;
 let statusBarItem: vscode.StatusBarItem;
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
+
 export function activate(context: vscode.ExtensionContext) {
 	console.log('File Generate Button extension is now active');
 
-	// Create status bar item
 	statusBarItem = vscode.window.createStatusBarItem(
 		vscode.StatusBarAlignment.Right,
 		100
@@ -20,7 +18,6 @@ export function activate(context: vscode.ExtensionContext) {
 	statusBarItem.tooltip = "Click to create a new file";
 	statusBarItem.show();
 
-	// Register the create file command
 	let createFileDisposable = vscode.commands.registerCommand('file-generate-button.createFile', () => {
 		createNewFile();
 	});
@@ -44,11 +41,9 @@ async function createNewFile() {
 	const filePath = vscode.Uri.joinPath(workspaceFolder.uri, fileName);
 
 	try {
-		// Create a new file with some default content
 		const content = new TextEncoder().encode(`This is file #${fileCounter}\nCreated at: ${new Date().toISOString()}\n`);
 		await vscode.workspace.fs.writeFile(filePath, content);
 		
-		// Open the new file in the editor
 		const document = await vscode.workspace.openTextDocument(filePath);
 		await vscode.window.showTextDocument(document);
 		
@@ -58,7 +53,6 @@ async function createNewFile() {
 	}
 }
 
-// This method is called when your extension is deactivated
 export function deactivate() {
 	if (statusBarItem) {
 		statusBarItem.dispose();
