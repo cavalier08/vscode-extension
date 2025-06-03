@@ -1,0 +1,57 @@
+{
+  "name": "file-editor-sidebar",
+  "displayName": "File Editor Sidebar",
+  "description": "Edit and create files directly from a sidebar webview",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:file-editor-sidebar.sidebarView"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "file-editor-sidebar.showSidebar",
+        "title": "Show File Editor Sidebar"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "file-editor-sidebar-view",
+          "title": "File Editor",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "file-editor-sidebar-view": [
+        {
+          "type": "webview",
+          "id": "file-editor-sidebar.sidebarView",
+          "name": "File Editor"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^16.18.34",
+    "@typescript-eslint/eslint-plugin": "^6.7.0",
+    "@typescript-eslint/parser": "^6.7.0",
+    "eslint": "^8.26.0",
+    "typescript": "^5.2.2"
+  }
+} 
