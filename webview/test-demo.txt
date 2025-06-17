@@ -1,0 +1,32 @@
+# WebView Editor Extension Demo
+
+This is a test file to demonstrate the WebView Editor extension functionality.
+
+## Features to Test:
+
+1. **@ Commands**:
+   - @create newfile.txt
+   - @create testfolder/
+   - @delete testfile.txt
+   - @save
+   - @list
+
+2. **File Operations**:
+   - Create files and folders
+   - Delete files and folders
+   - Navigate workspace files
+
+3. **Editor Features**:
+   - Real-time editing
+   - File content management
+   - Status updates
+
+## How to Use:
+
+1. Open VS Code
+2. Press F5 to launch the extension in development mode
+3. Look for the "WebView Editor" icon in the activity bar
+4. Click the icon to open the sidebar editor
+5. Start using @ commands!
+
+Happy coding! 🚀 
