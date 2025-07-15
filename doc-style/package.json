@@ -1,0 +1,56 @@
+{
+  "name": "doc-style",
+  "displayName": "Doc Style Chat Log",
+  "description": "A VSCode extension with a chat-like log for file operations using @ commands.",
+  "version": "0.0.1",
+  "publisher": "your-name",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "lib": ["es2020", "dom"],
+  "categories": ["Other"],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    
+    "onView:docStyleChatView"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "docStyle.openChat",
+        "title": "Doc Style Chat Log"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "docStyleSidebar",
+          "title": "Doc Style",
+          "icon": "$(comment-discussion)"
+        }
+      ]
+    },
+    "views": {
+      "docStyleSidebar": [
+        {
+          "id": "docStyleChatView",
+          "name": "Chat Log",
+          "type": "webview"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.70.0",
+    "typescript": "^4.8.0",
+    "eslint": "^8.0.0"
+  },
+  "dependencies": {}
+} 
