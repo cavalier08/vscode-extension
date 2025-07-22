@@ -30,12 +30,46 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const vscode = __importStar(require("vscode"));
 function activate(context) {
-    context.subscriptions.push(vscode.window.registerWebviewViewProvider('docStyleChatView', new DocStyleSidebarProvider(context.extensionUri, context)));
+    const provider = new DocStyleSidebarProvider(context.extensionUri, context);
+    context.subscriptions.push(vscode.window.registerWebviewViewProvider('docStyleChatView', provider));
+    // Listen for file saves and log new content
+    vscode.workspace.onDidSaveTextDocument((document) => {
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders || workspaceFolders.length === 0)
+            return;
+        const workspacePath = workspaceFolders[0].uri.fsPath;
+        if (!document.uri.fsPath.startsWith(workspacePath))
+            return;
+        const filename = path.relative(workspacePath, document.uri.fsPath);
+        const content = document.getText();
+        const lines = content.split(/\r?\n/);
+        const prevLines = provider.getPreviousFileContent(filename);
+        let changedLines = [];
+        if (prevLines) {
+            for (let i = 0; i < Math.max(prevLines.length, lines.length); i++) {
+                if (prevLines[i] !== lines[i]) {
+                    changedLines.push(`${i + 1}: ${prevLines[i] === undefined ? '' : prevLines[i]} => ${lines[i] === undefined ? '' : lines[i]}`);
+                }
+            }
+        }
+        else {
+            // If no previous content, treat all lines as new
+            for (let i = 0; i < lines.length; i++) {
+                changedLines.push(`${i + 1}:  => ${lines[i]}`);
+            }
+        }
+        provider.updateFileContent(filename, lines);
+        if (changedLines.length > 0) {
+            const summary = `Summary: File saved: ${filename}\nChanged lines:\n${changedLines.join('\n')}`;
+            provider.appendToLogAndWebview(summary);
+        }
+    });
 }
 exports.activate = activate;
 class DocStyleSidebarProvider {
     constructor(extensionUri, context) {
         this._log = [];
+        this._fileContents = new Map();
         this._extensionUri = extensionUri;
         this._context = context;
         // Load log from workspaceState
@@ -81,9 +115,20 @@ class DocStyleSidebarProvider {
                 fs.writeFileSync(filePath, content, 'utf8');
                 log.push(`created file ${filename}`);
                 log.push(`edited line 1 ${filename}`);
+                // Send create summary to webview
+                const summary = `Summary: Created file ${filename}\nContent:\n${content}`;
+                log.push(summary);
+                if (this._view) {
+                    this._view.webview.postMessage({ type: 'editSummary', summary });
+                }
             }
             catch (e) {
-                log.push(`error creating file ${filename}: ${e}`);
+                const errorMsg = `error creating file ${filename}: ${e}`;
+                log.push(errorMsg);
+                console.log(errorMsg);
+                if (this._view) {
+                    this._view.webview.postMessage({ type: 'editSummary', summary: errorMsg });
+                }
             }
         }
         else if (clearMatch) {
@@ -112,7 +157,8 @@ class DocStyleSidebarProvider {
                         console.log('Invalid line number:', lineNum, 'File has', lines.length, 'lines');
                     }
                     else {
-                        console.log('Old line:', lines[lineNum - 1]);
+                        const oldContent = lines[lineNum - 1];
+                        console.log('Old line:', oldContent);
                         lines[lineNum - 1] = replacement;
                         fs.writeFileSync(filePath, lines.join('\n'), 'utf8');
                         log.push(`edited line ${lineNum} ${filename}`);
@@ -127,7 +173,7 @@ class DocStyleSidebarProvider {
                         const activeEditor = vscode.window.visibleTextEditors.find(e => e.document.uri.fsPath === filePath);
                         if (activeEditor) {
                             const decorationType = vscode.window.createTextEditorDecorationType({
-                                backgroundColor: '#965f89',
+                                backgroundColor: '#c2185b',
                                 isWholeLine: true
                             });
                             const lineLength = lines[lineNum - 1] ? lines[lineNum - 1].length : 0;
@@ -139,6 +185,12 @@ class DocStyleSidebarProvider {
                         }
                         else {
                             console.log('No visible editor found for', filePath);
+                        }
+                        // Send edit summary to webview
+                        const summary = `Summary: Edited line ${lineNum} in ${filename}\nOld: ${oldContent}\nNew: ${replacement}`;
+                        log.push(summary);
+                        if (this._view) {
+                            this._view.webview.postMessage({ type: 'editSummary', summary });
                         }
                     }
                 }
@@ -160,9 +212,13 @@ class DocStyleSidebarProvider {
                     const lines = data.split(/\r?\n/);
                     const re = new RegExp(regex, 'g');
                     let editedLines = [];
+                    let editDetails = [];
                     const newLines = lines.map((line, idx) => {
                         if (re.test(line)) {
                             editedLines.push(idx + 1);
+                            const oldLine = line;
+                            const newLine = line.replace(re, replacement);
+                            editDetails.push(`Line ${idx + 1}:\n  Old: ${oldLine}\n\n  New: ${newLine}`);
                             return line.replace(re, replacement);
                         }
                         return line;
@@ -170,6 +226,12 @@ class DocStyleSidebarProvider {
                     fs.writeFileSync(filePath, newLines.join('\n'), 'utf8');
                     if (editedLines.length > 0) {
                         editedLines.forEach((l) => log.push(`edited line ${l} ${filename}`));
+                        // Send edit summary to webview
+                        const summary = `Summary: Edited lines ${editedLines.join(', ')} in ${filename}\n${editDetails.join('\n')}`;
+                        log.push(summary);
+                        if (this._view) {
+                            this._view.webview.postMessage({ type: 'editSummary', summary });
+                        }
                     }
                     else {
                         log.push(`no lines edited in ${filename}`);
@@ -223,6 +285,19 @@ class DocStyleSidebarProvider {
       </body>
       </html>
     `;
+    }
+    appendToLogAndWebview(summary) {
+        this._log.push(summary);
+        this._context.workspaceState.update('docStyleChatLog', this._log);
+        if (this._view) {
+            this._view.webview.postMessage({ type: 'log', log: this._log });
+        }
+    }
+    updateFileContent(filename, lines) {
+        this._fileContents.set(filename, lines);
+    }
+    getPreviousFileContent(filename) {
+        return this._fileContents.get(filename);
     }
 }
 function deactivate() { }
